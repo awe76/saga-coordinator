@@ -3,6 +3,17 @@ package workflow
 type route = map[string][]Operation
 type getOperationKey = func(op Operation) string
 
+func hasOp(m map[string]Operation, op Operation) bool {
+	key := op.getKey()
+	_, found := m[key]
+	return found
+}
+
+func addOp(m map[string]Operation, op Operation) {
+	key := op.getKey()
+	m[key] = op
+}
+
 func createRoute(operations []Operation, getKey getOperationKey) route {
 	result := make(map[string][]Operation)
 	for _, op := range operations {
@@ -22,9 +33,8 @@ func isReady(current string, to route, done map[string]Operation) bool {
 	if blockers, found := to[current]; found {
 		// for each potential blocker
 		for _, blocker := range blockers {
-			key := blocker.getKey()
-			// if operation is not completed it is a blocker and the vertex is not ready
-			if _, found := done[key]; !found {
+			// if operation is not completed it is a blocker and the vertex is not ready for issuered operations execution
+			if !hasOp(done, blocker) {
 				return false
 			}
 		}
@@ -39,6 +49,7 @@ func handleWorkflow(
 	end string,
 	from, to route,
 	done map[string]Operation,
+	inProgress map[string]Operation,
 	endWorkflow func() error,
 	spawnOperation func(op Operation) error,
 ) {
@@ -51,13 +62,14 @@ func handleWorkflow(
 			if ops, found := from[current]; found {
 				// for each operation started from the current vertex
 				for _, op := range ops {
-					key := op.getKey()
-					if _, found := done[key]; found {
+					if hasOp(done, op) {
 						// if operation is completed continue handling
-						handleWorkflow(op.To, start, end, from, to, done, endWorkflow, spawnOperation)
-					} else {
-						// if operations is not completed spawn it
+						handleWorkflow(op.To, start, end, from, to, done, inProgress, endWorkflow, spawnOperation)
+					} else if !hasOp(inProgress, op) {
+						// if operations is not completed spawn it and not in progress
 						spawnOperation(op)
+						// add operation to in progress
+						addOp(inProgress, op)
 					}
 				}
 			}

@@ -71,6 +71,34 @@ func TestHandleWorkflow(t *testing.T) {
 		},
 	}
 
+	extendedOperations := []Operation{
+		{
+			Name: "op1",
+			From: "s1",
+			To:   "s2",
+		},
+		{
+			Name: "op2",
+			From: "s2",
+			To:   "s3",
+		},
+		{
+			Name: "op3",
+			From: "s1",
+			To:   "s3",
+		},
+		{
+			Name: "op4",
+			From: "s3",
+			To:   "s4",
+		},
+		{
+			Name: "op5",
+			From: "s1",
+			To:   "s4",
+		},
+	}
+
 	var tests = map[string]struct {
 		current    string
 		start      string
@@ -80,7 +108,7 @@ func TestHandleWorkflow(t *testing.T) {
 		expected   []string
 		isFinished bool
 	}{
-		"start worflow": {
+		"should start worflow": {
 			operations: defaultOperations,
 			current:    "s1",
 			start:      "s1",
@@ -106,6 +134,24 @@ func TestHandleWorkflow(t *testing.T) {
 			done:       []string{"op1", "op2", "op3"},
 			expected:   []string{},
 			isFinished: true,
+		},
+		"should start extended workflow": {
+			operations: extendedOperations,
+			current:    "s1",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{},
+			expected:   []string{"op1", "op3", "op5"},
+			isFinished: false,
+		},
+		"should spawn op4 if op1 op2 and op3 are finished": {
+			operations: extendedOperations,
+			current:    "s1",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{"op1", "op2", "op3"},
+			expected:   []string{"op4", "op5"},
+			isFinished: false,
 		},
 	}
 
@@ -135,7 +181,9 @@ func TestHandleWorkflow(t *testing.T) {
 				return nil
 			}
 
-			handleWorkflow(tc.current, tc.start, tc.end, from, to, done, endHandler, spawn)
+			inProgress := make(map[string]Operation)
+
+			handleWorkflow(tc.current, tc.start, tc.end, from, to, done, inProgress, endHandler, spawn)
 			assert.Equal(t, tc.expected, spawned)
 			assert.Equal(t, tc.isFinished, isFinished)
 		})
