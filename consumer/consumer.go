@@ -7,10 +7,11 @@ import (
 	"syscall"
 
 	"github.com/Shopify/sarama"
+	"github.com/awe76/saga-coordinator/cache"
 	"github.com/awe76/saga-coordinator/client"
 )
 
-type MessageHandler = func(msg *sarama.ConsumerMessage, msgCount int)
+type MessageHandler = func(msg *sarama.ConsumerMessage, cache cache.Cache)
 type ErrorHandler = func(err error)
 type query struct {
 	topic         string
@@ -20,6 +21,7 @@ type query struct {
 
 type consumer struct {
 	client  client.Client
+	cache   cache.Cache
 	topicCh chan query
 	doneCh  chan struct{}
 	conn    sarama.Consumer
@@ -39,7 +41,6 @@ func (cr *consumer) HandleTopic(topic string, handleMessage MessageHandler, hand
 	}
 
 	cr.topicCh <- query
-
 }
 
 func (cr *consumer) Start() {
@@ -78,7 +79,7 @@ func (cr *consumer) Start() {
 							q.handleError(err)
 						case msg := <-consumer.Messages():
 							msgCount++
-							q.handleMessage(msg, msgCount)
+							q.handleMessage(msg, cr.cache)
 						}
 					}
 				}()

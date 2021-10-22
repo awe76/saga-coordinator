@@ -12,7 +12,7 @@ type producer struct {
 }
 
 type Producer interface {
-	Push(string, []byte) error
+	Push(topic string, message []byte) error
 }
 
 func (p *producer) Push(topic string, message []byte) error {
