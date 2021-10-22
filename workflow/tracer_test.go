@@ -105,6 +105,7 @@ func TestHandleWorkflow(t *testing.T) {
 		end        string
 		operations []Operation
 		done       []string
+		inProgress []string
 		expected   []string
 		isFinished bool
 	}{
@@ -114,6 +115,7 @@ func TestHandleWorkflow(t *testing.T) {
 			start:      "s1",
 			end:        "s2",
 			done:       []string{},
+			inProgress: []string{},
 			expected:   []string{"op1", "op2"},
 			isFinished: false,
 		},
@@ -123,15 +125,17 @@ func TestHandleWorkflow(t *testing.T) {
 			start:      "s1",
 			end:        "s2",
 			done:       []string{"op1", "op2"},
+			inProgress: []string{},
 			expected:   []string{"op3"},
 			isFinished: false,
 		},
-		"should end workflow": {
+		"should compete workflow": {
 			operations: defaultOperations,
 			current:    "s1",
 			start:      "s1",
 			end:        "s2",
 			done:       []string{"op1", "op2", "op3"},
+			inProgress: []string{},
 			expected:   []string{},
 			isFinished: true,
 		},
@@ -141,16 +145,48 @@ func TestHandleWorkflow(t *testing.T) {
 			start:      "s1",
 			end:        "s4",
 			done:       []string{},
+			inProgress: []string{},
 			expected:   []string{"op1", "op3", "op5"},
 			isFinished: false,
 		},
-		"should spawn op4 if op1 op2 and op3 are finished": {
+		"should spawn op4 and op5 if op1 op2 and op3 are finished": {
 			operations: extendedOperations,
 			current:    "s1",
 			start:      "s1",
 			end:        "s4",
 			done:       []string{"op1", "op2", "op3"},
+			inProgress: []string{},
 			expected:   []string{"op4", "op5"},
+			isFinished: false,
+		},
+		"should spawn op4 if op1 op2 and op3 are finished and op5 is in progress": {
+			operations: extendedOperations,
+			current:    "s1",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{"op1", "op2", "op3"},
+			inProgress: []string{"op5"},
+			expected:   []string{"op4"},
+			isFinished: false,
+		},
+		"should complete extended workflow": {
+			operations: extendedOperations,
+			current:    "s1",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{"op1", "op2", "op3", "op4", "op5"},
+			inProgress: []string{},
+			expected:   []string{},
+			isFinished: true,
+		},
+		"should not complete extended workflow if op4 is in progress": {
+			operations: extendedOperations,
+			current:    "s1",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{"op1", "op2", "op3", "op5"},
+			inProgress: []string{"op4"},
+			expected:   []string{},
 			isFinished: false,
 		},
 	}
@@ -160,11 +196,20 @@ func TestHandleWorkflow(t *testing.T) {
 			from := createRoute(tc.operations, getFrom)
 			to := createRoute(tc.operations, getTo)
 			done := make(map[string]Operation)
+			inProgress := make(map[string]Operation)
 
 			for _, name := range tc.done {
 				for _, op := range tc.operations {
 					if op.Name == name {
-						done[op.getKey()] = op
+						addOp(done, op)
+					}
+				}
+			}
+
+			for _, name := range tc.inProgress {
+				for _, op := range tc.operations {
+					if op.Name == name {
+						addOp(inProgress, op)
 					}
 				}
 			}
@@ -180,8 +225,6 @@ func TestHandleWorkflow(t *testing.T) {
 				isFinished = true
 				return nil
 			}
-
-			inProgress := make(map[string]Operation)
 
 			handleWorkflow(tc.current, tc.start, tc.end, from, to, done, inProgress, endHandler, spawn)
 			assert.Equal(t, tc.expected, spawned)

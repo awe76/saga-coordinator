@@ -57,14 +57,23 @@ func handleWorkflow(
 		if current == end {
 			endWorkflow()
 		} else {
-
 			// get all operations started from the current vertex
 			if ops, found := from[current]; found {
 				// for each operation started from the current vertex
 				for _, op := range ops {
 					if hasOp(done, op) {
 						// if operation is completed continue handling
-						handleWorkflow(op.To, start, end, from, to, done, inProgress, endWorkflow, spawnOperation)
+						handleWorkflow(
+							op.To,
+							start,
+							end,
+							from,
+							to,
+							done,
+							inProgress,
+							endWorkflow,
+							spawnOperation,
+						)
 					} else if !hasOp(inProgress, op) {
 						// if operations is not completed spawn it and not in progress
 						spawnOperation(op)
