@@ -44,15 +44,7 @@ func TestCreateRoute(t *testing.T) {
 	assert.Equal(t, route, expected)
 }
 
-func TestHandleWorkflow(t *testing.T) {
-	getFrom := func(op Operation) string {
-		return op.From
-	}
-
-	getTo := func(op Operation) string {
-		return op.To
-	}
-
+func TestResolveWorkflow(t *testing.T) {
 	defaultOperations := []Operation{
 		{
 			Name: "op1",
@@ -193,8 +185,6 @@ func TestHandleWorkflow(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			from := createRoute(tc.operations, getFrom)
-			to := createRoute(tc.operations, getTo)
 			done := make(map[string]Operation)
 			inProgress := make(map[string]Operation)
 
@@ -214,6 +204,17 @@ func TestHandleWorkflow(t *testing.T) {
 				}
 			}
 
+			w := Workflow{
+				Start:      tc.start,
+				End:        tc.end,
+				Operations: tc.operations,
+			}
+
+			s := State{
+				Done:       done,
+				InProgress: inProgress,
+			}
+
 			spawned := []string{}
 			spawn := func(op Operation) error {
 				spawned = append(spawned, op.Name)
@@ -221,12 +222,14 @@ func TestHandleWorkflow(t *testing.T) {
 			}
 
 			isFinished := false
-			endHandler := func() error {
+			end := func() error {
 				isFinished = true
 				return nil
 			}
 
-			handleWorkflow(tc.current, tc.start, tc.end, from, to, done, inProgress, endHandler, spawn)
+			tracer := createDirectTracer(w, s, end, spawn)
+
+			tracer.resolveWorkflow(tc.current)
 			assert.Equal(t, tc.expected, spawned)
 			assert.Equal(t, tc.isFinished, isFinished)
 		})

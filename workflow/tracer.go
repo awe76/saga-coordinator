@@ -14,6 +14,20 @@ func addOp(m map[string]Operation, op Operation) {
 	m[key] = op
 }
 
+func allMatched(current string, relation route, isMatched func(op Operation) bool) bool {
+	// get all related operations
+	if ops, found := relation[current]; found {
+		// for each operation
+		for _, op := range ops {
+			if !isMatched(op) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 func createRoute(operations []Operation, getKey getOperationKey) route {
 	result := make(map[string][]Operation)
 	for _, op := range operations {
@@ -28,57 +42,84 @@ func createRoute(operations []Operation, getKey getOperationKey) route {
 	return result
 }
 
-func isReady(current string, to route, done map[string]Operation) bool {
-	// get all operations should be finished to continue execution
-	if blockers, found := to[current]; found {
-		// for each potential blocker
-		for _, blocker := range blockers {
-			// if operation is not completed it is a blocker and the vertex is not ready for issuered operations execution
-			if !hasOp(done, blocker) {
-				return false
-			}
-		}
-	}
-
-	return true
+type tracer struct {
+	isReady        func(current string) bool
+	isFinished     func(current string) bool
+	getNext        func(current string) (ops []Operation, found bool)
+	isProcessed    func(op Operation) bool
+	canBeSpawned   func(op Operation) bool
+	getNextVertex  func(op Operation) string
+	endWorkflow    func() error
+	spawnOperation func(op Operation) error
 }
 
-func handleWorkflow(
-	current string,
-	start string,
-	end string,
-	from, to route,
-	done map[string]Operation,
-	inProgress map[string]Operation,
+func getFrom(op Operation) string {
+	return op.From
+}
+
+func getTo(op Operation) string {
+	return op.To
+}
+
+func createDirectTracer(
+	w Workflow,
+	s State,
 	endWorkflow func() error,
 	spawnOperation func(op Operation) error,
-) {
-	if isReady(current, to, done) {
-		if current == end {
-			endWorkflow()
+) *tracer {
+	from := createRoute(w.Operations, getFrom)
+	to := createRoute(w.Operations, getTo)
+
+	isMatched := func(op Operation) bool {
+		return hasOp(s.Done, op)
+	}
+
+	return &tracer{
+		isReady: func(current string) bool {
+			return allMatched(current, to, isMatched)
+		},
+		isFinished: func(current string) bool {
+			return current == w.End
+		},
+		getNext: func(current string) ([]Operation, bool) {
+			ops, found := from[current]
+			return ops, found
+		},
+		isProcessed: func(op Operation) bool {
+			return hasOp(s.Done, op)
+		},
+		canBeSpawned: func(op Operation) bool {
+			return !hasOp(s.InProgress, op)
+		},
+		getNextVertex: func(op Operation) string {
+			return op.To
+		},
+		endWorkflow: endWorkflow,
+		spawnOperation: func(op Operation) error {
+			addOp(s.InProgress, op)
+			return spawnOperation(op)
+		},
+	}
+}
+
+func (t *tracer) resolveWorkflow(current string) {
+	// the current vertex is ready to resolution
+	if t.isReady(current) {
+		if t.isFinished(current) {
+			t.endWorkflow()
 		} else {
-			// get all operations started from the current vertex
-			if ops, found := from[current]; found {
-				// for each operation started from the current vertex
+			// get next operations
+			if ops, found := t.getNext(current); found {
+				// for each next operation
 				for _, op := range ops {
-					if hasOp(done, op) {
-						// if operation is completed continue handling
-						handleWorkflow(
-							op.To,
-							start,
-							end,
-							from,
-							to,
-							done,
-							inProgress,
-							endWorkflow,
-							spawnOperation,
-						)
-					} else if !hasOp(inProgress, op) {
+					if t.isProcessed(op) {
+						// if operation is processed continue handling
+						nextVertex := t.getNextVertex(op)
+						t.resolveWorkflow(nextVertex)
+						// if operation can be spawned
+					} else if t.canBeSpawned(op) {
 						// if operations is not completed spawn it and not in progress
-						spawnOperation(op)
-						// add operation to in progress
-						addOp(inProgress, op)
+						t.spawnOperation(op)
 					}
 				}
 			}

@@ -11,7 +11,7 @@ import (
 type State struct {
 	ID         int
 	Done       map[string]Operation
-	Rollbacked map[string]Operation
+	InProgress map[string]Operation
 	Data       map[string]map[string]interface{}
 }
 
@@ -27,7 +27,7 @@ func createState(id int, cache cache.Cache) (State, error) {
 	state := State{
 		ID:         id,
 		Done:       make(map[string]Operation),
-		Rollbacked: make(map[string]Operation),
+		InProgress: make(map[string]Operation),
 		Data:       make(map[string]map[string]interface{}),
 	}
 
