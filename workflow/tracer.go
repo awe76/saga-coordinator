@@ -3,6 +3,14 @@ package workflow
 type route = map[string][]Operation
 type getOperationKey = func(op Operation) string
 
+func getFrom(op Operation) string {
+	return op.From
+}
+
+func getTo(op Operation) string {
+	return op.To
+}
+
 func hasOp(m map[string]Operation, op Operation) bool {
 	key := op.getKey()
 	_, found := m[key]
@@ -53,14 +61,6 @@ type tracer struct {
 	spawnOperation func(op Operation) error
 }
 
-func getFrom(op Operation) string {
-	return op.From
-}
-
-func getTo(op Operation) string {
-	return op.To
-}
-
 func createDirectTracer(
 	w Workflow,
 	s State,
@@ -102,6 +102,47 @@ func createDirectTracer(
 	}
 }
 
+func createReverseTracer(
+	w Workflow,
+	s State,
+	endWorkflow func() error,
+	spawnOperation func(op Operation) error,
+) *tracer {
+	from := createRoute(w.Operations, getFrom)
+	to := createRoute(w.Operations, getTo)
+
+	isMatched := func(op Operation) bool {
+		return !hasOp(s.Done, op)
+	}
+
+	return &tracer{
+		isReady: func(current string) bool {
+			return allMatched(current, from, isMatched)
+		},
+		isFinished: func(current string) bool {
+			return current == w.Start
+		},
+		getNext: func(current string) ([]Operation, bool) {
+			ops, found := to[current]
+			return ops, found
+		},
+		isProcessed: func(op Operation) bool {
+			return !hasOp(s.Done, op)
+		},
+		canBeSpawned: func(op Operation) bool {
+			return !hasOp(s.InProgress, op)
+		},
+		getNextVertex: func(op Operation) string {
+			return op.From
+		},
+		endWorkflow: endWorkflow,
+		spawnOperation: func(op Operation) error {
+			addOp(s.InProgress, op)
+			return spawnOperation(op)
+		},
+	}
+}
+
 func (t *tracer) resolveWorkflow(current string) {
 	// the current vertex is ready to resolution
 	if t.isReady(current) {
@@ -113,12 +154,11 @@ func (t *tracer) resolveWorkflow(current string) {
 				// for each next operation
 				for _, op := range ops {
 					if t.isProcessed(op) {
-						// if operation is processed continue handling
+						// if operation has been already processed continue resolution of the next vertex
 						nextVertex := t.getNextVertex(op)
 						t.resolveWorkflow(nextVertex)
-						// if operation can be spawned
 					} else if t.canBeSpawned(op) {
-						// if operations is not completed spawn it and not in progress
+						// if operation can be spawned do it
 						t.spawnOperation(op)
 					}
 				}

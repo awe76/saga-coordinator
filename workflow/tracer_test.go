@@ -44,7 +44,7 @@ func TestCreateRoute(t *testing.T) {
 	assert.Equal(t, route, expected)
 }
 
-func TestResolveWorkflow(t *testing.T) {
+func TestDirectTracer(t *testing.T) {
 	defaultOperations := []Operation{
 		{
 			Name: "op1",
@@ -228,6 +228,198 @@ func TestResolveWorkflow(t *testing.T) {
 			}
 
 			tracer := createDirectTracer(w, s, end, spawn)
+
+			tracer.resolveWorkflow(tc.current)
+			assert.Equal(t, tc.expected, spawned)
+			assert.Equal(t, tc.isFinished, isFinished)
+		})
+	}
+}
+
+func TestReverseTracer(t *testing.T) {
+	defaultOperations := []Operation{
+		{
+			Name: "op1",
+			From: "s1",
+			To:   "s2",
+		},
+		{
+			Name: "op2",
+			From: "s1",
+			To:   "s3",
+		},
+		{
+			Name: "op3",
+			From: "s3",
+			To:   "s2",
+		},
+	}
+
+	extendedOperations := []Operation{
+		{
+			Name: "op1",
+			From: "s1",
+			To:   "s2",
+		},
+		{
+			Name: "op2",
+			From: "s2",
+			To:   "s3",
+		},
+		{
+			Name: "op3",
+			From: "s1",
+			To:   "s3",
+		},
+		{
+			Name: "op4",
+			From: "s3",
+			To:   "s4",
+		},
+		{
+			Name: "op5",
+			From: "s1",
+			To:   "s4",
+		},
+	}
+
+	var tests = map[string]struct {
+		current    string
+		start      string
+		end        string
+		operations []Operation
+		done       []string
+		inProgress []string
+		expected   []string
+		isFinished bool
+	}{
+		"should revert all done operation": {
+			operations: defaultOperations,
+			current:    "s2",
+			start:      "s1",
+			end:        "s2",
+			done:       []string{"op1", "op2"},
+			inProgress: []string{},
+			expected:   []string{"op1", "op2"},
+			isFinished: false,
+		},
+		"should revert op3 if op3 and op3 are finished": {
+			operations: defaultOperations,
+			current:    "s2",
+			start:      "s1",
+			end:        "s2",
+			done:       []string{"op2", "op3"},
+			inProgress: []string{},
+			expected:   []string{"op3"},
+			isFinished: false,
+		},
+		"should compete workflow reversion": {
+			operations: defaultOperations,
+			current:    "s2",
+			start:      "s1",
+			end:        "s2",
+			done:       []string{},
+			inProgress: []string{},
+			expected:   []string{},
+			isFinished: true,
+		},
+		"should revert all done operations in the extended workflow": {
+			operations: extendedOperations,
+			current:    "s4",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{"op1", "op3", "op5"},
+			inProgress: []string{},
+			expected:   []string{"op1", "op3", "op5"},
+			isFinished: false,
+		},
+		"should revert op2 and op3 if op1 op2 and op3 are finished": {
+			operations: extendedOperations,
+			current:    "s4",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{"op1", "op2", "op3"},
+			inProgress: []string{},
+			expected:   []string{"op2", "op3"},
+			isFinished: false,
+		},
+		"should revert op2 and op3 if op1 op2 and op3 are finished and op5 is in progress": {
+			operations: extendedOperations,
+			current:    "s4",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{"op1", "op2", "op3"},
+			inProgress: []string{"op5"},
+			expected:   []string{"op2", "op3"},
+			isFinished: false,
+		},
+		"should revert extended workflow": {
+			operations: extendedOperations,
+			current:    "s4",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{},
+			inProgress: []string{},
+			expected:   []string{},
+			isFinished: true,
+		},
+		"should not revert extended workflow if op5 is in progress": {
+			operations: extendedOperations,
+			current:    "s4",
+			start:      "s1",
+			end:        "s4",
+			done:       []string{},
+			inProgress: []string{"op5"},
+			expected:   []string{},
+			isFinished: false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			done := make(map[string]Operation)
+			inProgress := make(map[string]Operation)
+
+			for _, name := range tc.done {
+				for _, op := range tc.operations {
+					if op.Name == name {
+						addOp(done, op)
+					}
+				}
+			}
+
+			for _, name := range tc.inProgress {
+				for _, op := range tc.operations {
+					if op.Name == name {
+						addOp(inProgress, op)
+					}
+				}
+			}
+
+			w := Workflow{
+				Start:      tc.start,
+				End:        tc.end,
+				Operations: tc.operations,
+			}
+
+			s := State{
+				Done:       done,
+				InProgress: inProgress,
+			}
+
+			spawned := []string{}
+			spawn := func(op Operation) error {
+				spawned = append(spawned, op.Name)
+				return nil
+			}
+
+			isFinished := false
+			end := func() error {
+				isFinished = true
+				return nil
+			}
+
+			tracer := createReverseTracer(w, s, end, spawn)
 
 			tracer.resolveWorkflow(tc.current)
 			assert.Equal(t, tc.expected, spawned)
