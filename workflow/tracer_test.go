@@ -210,7 +210,7 @@ func TestDirectTracer(t *testing.T) {
 				Operations: tc.operations,
 			}
 
-			s := State{
+			s := state{
 				Done:       done,
 				InProgress: inProgress,
 			}
@@ -402,7 +402,7 @@ func TestReverseTracer(t *testing.T) {
 				Operations: tc.operations,
 			}
 
-			s := State{
+			s := state{
 				Done:       done,
 				InProgress: inProgress,
 			}

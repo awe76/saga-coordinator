@@ -22,6 +22,11 @@ func addOp(m map[string]Operation, op Operation) {
 	m[key] = op
 }
 
+func removeOp(m map[string]Operation, op Operation) {
+	key := op.getKey()
+	delete(m, key)
+}
+
 func allMatched(current string, relation route, isMatched func(op Operation) bool) bool {
 	// get all related operations
 	if ops, found := relation[current]; found {
@@ -63,7 +68,7 @@ type tracer struct {
 
 func createDirectTracer(
 	w Workflow,
-	s State,
+	s state,
 	endWorkflow func() error,
 	spawnOperation func(op Operation) error,
 ) *tracer {
@@ -104,7 +109,7 @@ func createDirectTracer(
 
 func createReverseTracer(
 	w Workflow,
-	s State,
+	s state,
 	endWorkflow func() error,
 	spawnOperation func(op Operation) error,
 ) *tracer {
@@ -112,7 +117,7 @@ func createReverseTracer(
 	to := createRoute(w.Operations, getTo)
 
 	isMatched := func(op Operation) bool {
-		return !hasOp(s.Done, op)
+		return !hasOp(s.Done, op) && !hasOp(s.InProgress, op)
 	}
 
 	return &tracer{
@@ -143,11 +148,14 @@ func createReverseTracer(
 	}
 }
 
-func (t *tracer) resolveWorkflow(current string) {
-	// the current vertex is ready to resolution
+func (t *tracer) resolveWorkflow(current string) error {
+	// current vertex is ready for resolution
 	if t.isReady(current) {
 		if t.isFinished(current) {
-			t.endWorkflow()
+			err := t.endWorkflow()
+			if err != nil {
+				return err
+			}
 		} else {
 			// get next operations
 			if ops, found := t.getNext(current); found {
@@ -156,13 +164,21 @@ func (t *tracer) resolveWorkflow(current string) {
 					if t.isProcessed(op) {
 						// if operation has been already processed continue resolution of the next vertex
 						nextVertex := t.getNextVertex(op)
-						t.resolveWorkflow(nextVertex)
+						err := t.resolveWorkflow(nextVertex)
+						if err != nil {
+							return err
+						}
 					} else if t.canBeSpawned(op) {
 						// if operation can be spawned do it
-						t.spawnOperation(op)
+						err := t.spawnOperation(op)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}
 		}
 	}
+
+	return nil
 }

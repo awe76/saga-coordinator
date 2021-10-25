@@ -1,6 +1,7 @@
 package producer
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/Shopify/sarama"
@@ -12,10 +13,10 @@ type producer struct {
 }
 
 type Producer interface {
-	Push(topic string, message []byte) error
+	SendMessage(topic string, message interface{}) error
 }
 
-func (p *producer) Push(topic string, message []byte) error {
+func (p *producer) SendMessage(topic string, message interface{}) error {
 	conn, err := p.client.NewKafkaProducer()
 
 	if err != nil {
@@ -24,9 +25,14 @@ func (p *producer) Push(topic string, message []byte) error {
 
 	defer conn.Close()
 
+	raw, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
-		Value: sarama.StringEncoder(message),
+		Value: sarama.StringEncoder(raw),
 	}
 
 	partition, offset, err := conn.SendMessage(msg)

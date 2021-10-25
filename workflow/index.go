@@ -12,9 +12,8 @@ type Index struct {
 	ID int
 }
 
-func reserveID(cache cache.Cache) (int, error) {
+func reserveID(key string, cache cache.Cache) (int, error) {
 	var index Index
-	key := "worflow:index"
 
 	ctx := context.Background()
 	rawIndex, err := cache.Get(ctx, key)
@@ -30,11 +29,7 @@ func reserveID(cache cache.Cache) (int, error) {
 	}
 
 	index.ID++
-	rawNextIndex, err := json.Marshal(index)
-	if err != nil {
-		return index.ID, err
-	}
 
-	cache.Set(ctx, key, string(rawNextIndex))
+	cache.Set(ctx, key, index)
 	return index.ID, nil
 }

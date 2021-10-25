@@ -37,7 +37,7 @@ func (h *handler) createComment() func(c *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
-		h.producer.Push("comments", cmtInBytes)
+		h.producer.SendMessage("comments", cmtInBytes)
 
 		// Return Comment in JSON format
 		err = c.JSON(&fiber.Map{
