@@ -1,8 +1,8 @@
 package workflow
 
 type OperationPayload struct {
-	ID          int
-	IsReversion bool
-	Name        string
-	Operation   Operation
+	ID         int
+	IsRollback bool
+	Name       string
+	Operation  Operation
 }

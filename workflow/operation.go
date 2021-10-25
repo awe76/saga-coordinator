@@ -12,11 +12,11 @@ func (op *Operation) getKey() string {
 	return fmt.Sprintf("%s:%s:%s", op.Name, op.From, op.To)
 }
 
-func (op *Operation) toPayload(id int, w Workflow, isReversion bool) OperationPayload {
+func (op *Operation) toPayload(id int, w Workflow, isRollback bool) OperationPayload {
 	return OperationPayload{
-		ID:          id,
-		Name:        w.Name,
-		IsReversion: isReversion,
-		Operation:   *op,
+		ID:         id,
+		Name:       w.Name,
+		IsRollback: isRollback,
+		Operation:  *op,
 	}
 }

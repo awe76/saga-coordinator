@@ -9,11 +9,11 @@ import (
 )
 
 type state struct {
-	ID          int
-	IsReversion bool
-	Done        map[string]Operation
-	InProgress  map[string]Operation
-	Data        map[string]map[string]interface{}
+	ID         int
+	IsRollback bool
+	Done       map[string]Operation
+	InProgress map[string]Operation
+	Data       map[string]map[string]interface{}
 }
 
 func (s *state) getCacheKey() string {
@@ -23,7 +23,7 @@ func (s *state) getCacheKey() string {
 func (s *state) init(cache cache.Cache) error {
 	ctx := context.Background()
 
-	s.IsReversion = false
+	s.IsRollback = false
 	s.Done = make(map[string]Operation)
 	s.InProgress = make(map[string]Operation)
 	s.Data = make(map[string]map[string]interface{})

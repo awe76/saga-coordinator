@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	WORKFLOW_OPERATION_EXECUTE = "workflow:operation:execute"
-	WORKFLOW_OPERATION_REVERT  = "worfklow:operation:revert"
-	WORKFLOW_COMPLETED         = "workflow:completed"
-	WORKFLOW_REVERTED          = "workflow:reverted"
+	WORKFLOW_OPERATION_EXECUTE  = "workflow:operation:execute"
+	WORKFLOW_OPERATION_ROLLBACK = "worfklow:operation:rollback"
+	WORKFLOW_COMPLETED          = "workflow:completed"
+	WORKFLOW_ROLLBACKED         = "workflow:rollbacked"
 )
 
 type RouteMap struct {
@@ -59,7 +59,7 @@ func (p *processor) OnComplete(w Workflow, op OperationPayload) error {
 	err := p.state.update(p.cache, func(s *state) {
 		removeOp(s.InProgress, op.Operation)
 
-		if !s.IsReversion {
+		if !s.IsRollback {
 			addOp(s.Done, op.Operation)
 		}
 	})
@@ -67,7 +67,7 @@ func (p *processor) OnComplete(w Workflow, op OperationPayload) error {
 		return err
 	}
 
-	if p.state.IsReversion {
+	if p.state.IsRollback {
 		t := createReverseTracer(w, p.state, p.endWorkflow, p.spawnOperation)
 		return t.resolveWorkflow(w.End)
 	} else {
@@ -85,7 +85,7 @@ func (p *processor) OnFailure(w Workflow, op OperationPayload) error {
 	err := p.state.update(p.cache, func(s *state) {
 		removeOp(s.InProgress, op.Operation)
 
-		s.IsReversion = true
+		s.IsRollback = true
 	})
 	if err != nil {
 		return err
@@ -97,14 +97,14 @@ func (p *processor) OnFailure(w Workflow, op OperationPayload) error {
 
 func (p *processor) spawnOperation(op Operation) error {
 	payload := OperationPayload{
-		ID:          p.state.ID,
-		IsReversion: p.state.IsReversion,
-		Name:        p.workflow.Name,
-		Operation:   op,
+		ID:         p.state.ID,
+		IsRollback: p.state.IsRollback,
+		Name:       p.workflow.Name,
+		Operation:  op,
 	}
 
 	err := p.state.update(p.cache, func(s *state) {
-		if s.IsReversion {
+		if s.IsRollback {
 			removeOp(s.Done, op)
 		}
 	})
@@ -113,8 +113,8 @@ func (p *processor) spawnOperation(op Operation) error {
 	}
 
 	topic := WORKFLOW_OPERATION_EXECUTE
-	if p.state.IsReversion {
-		topic = WORKFLOW_OPERATION_REVERT
+	if p.state.IsRollback {
+		topic = WORKFLOW_OPERATION_ROLLBACK
 	}
 
 	return p.producer.SendMessage(topic, payload)
@@ -122,14 +122,14 @@ func (p *processor) spawnOperation(op Operation) error {
 
 func (p *processor) endWorkflow() error {
 	payload := WorkflowPayload{
-		ID:          p.state.ID,
-		IsReversion: p.state.IsReversion,
-		Name:        p.workflow.Name,
+		ID:         p.state.ID,
+		IsRollback: p.state.IsRollback,
+		Name:       p.workflow.Name,
 	}
 
 	topic := WORKFLOW_COMPLETED
-	if p.state.IsReversion {
-		topic = WORKFLOW_REVERTED
+	if p.state.IsRollback {
+		topic = WORKFLOW_ROLLBACKED
 	}
 
 	return p.producer.SendMessage(topic, payload)

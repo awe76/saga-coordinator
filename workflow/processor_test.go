@@ -44,7 +44,7 @@ func TestProcessor(t *testing.T) {
 		w     Workflow
 		steps []step
 	}{
-		"default workflow": {
+		"default workflow is completed": {
 			w: defaultWorkflow,
 			steps: []step{
 				{
@@ -80,6 +80,62 @@ func TestProcessor(t *testing.T) {
 					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
 						wp := w.toPayload(1, false)
 						assert.True(t, p.Has(WORKFLOW_COMPLETED, wp))
+					},
+				},
+			},
+		},
+		"default workflow is rollbacked": {
+			w: defaultWorkflow,
+			steps: []step{
+				{
+					action: func(t *testing.T, w Workflow, p *processor) {
+						assert.NoError(t, p.StartWorkflow(w))
+					},
+					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
+						op1 := ops[0].toPayload(1, w, false)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op1))
+
+						op2 := ops[1].toPayload(1, w, false)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op2))
+					},
+				},
+				{
+					action: func(t *testing.T, w Workflow, p *processor) {
+						op1 := ops[0].toPayload(1, w, false)
+						assert.NoError(t, p.OnComplete(w, op1))
+
+						op2 := ops[1].toPayload(1, w, false)
+						assert.NoError(t, p.OnComplete(w, op2))
+					},
+					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
+						op3 := ops[2].toPayload(1, w, false)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op3))
+					},
+				},
+				{
+					action: func(t *testing.T, w Workflow, p *processor) {
+						op3 := ops[2].toPayload(1, w, false)
+						assert.NoError(t, p.OnFailure(w, op3))
+					},
+					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
+						op1 := ops[0].toPayload(1, w, true)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_ROLLBACK, op1))
+
+						op2 := ops[1].toPayload(1, w, true)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_ROLLBACK, op2))
+					},
+				},
+				{
+					action: func(t *testing.T, w Workflow, p *processor) {
+						op1 := ops[0].toPayload(1, w, true)
+						assert.NoError(t, p.OnComplete(w, op1))
+
+						op2 := ops[1].toPayload(1, w, true)
+						assert.NoError(t, p.OnComplete(w, op2))
+					},
+					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
+						wp := w.toPayload(1, true)
+						assert.True(t, p.Has(WORKFLOW_ROLLBACKED, wp))
 					},
 				},
 			},
