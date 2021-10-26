@@ -2,7 +2,6 @@ package producer
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/Shopify/sarama"
 	"github.com/awe76/saga-coordinator/client"
@@ -35,12 +34,10 @@ func (p *producer) SendMessage(topic string, message interface{}) error {
 		Value: sarama.StringEncoder(raw),
 	}
 
-	partition, offset, err := conn.SendMessage(msg)
+	_, _, err = conn.SendMessage(msg)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Message is stored in topic(%s)/partition(%d)/offset(%d)\n", topic, partition, offset)
 
 	return nil
 }

@@ -1,15 +1,19 @@
 package workflow
 
 import (
+	"fmt"
+
 	"github.com/awe76/saga-coordinator/cache"
 	"github.com/awe76/saga-coordinator/producer"
 )
 
 const (
-	WORKFLOW_OPERATION_EXECUTE  = "workflow:operation:execute"
-	WORKFLOW_OPERATION_ROLLBACK = "worfklow:operation:rollback"
-	WORKFLOW_COMPLETED          = "workflow:completed"
-	WORKFLOW_ROLLBACKED         = "workflow:rollbacked"
+	WORKFLOW_OPERATION_START     = "workflow-operation-start"
+	WORKFLOW_OPERATION_COMPLETED = "workflow-operation-completed"
+	WORKFLOW_OPERATION_FAILED    = "workflow-operation-failed"
+	WORKFLOW_COMPLETED           = "workflow-completed"
+	WORKFLOW_ROLLBACKED          = "workflow-rollbacked"
+	WORKFLOW_START               = "workflow-start"
 )
 
 type RouteMap struct {
@@ -24,30 +28,23 @@ type processor struct {
 }
 
 type Processor interface {
-	StartWorkflow(w Workflow) error
+	StartWorkflow(w Workflow, id int) error
 	OnComplete(w Workflow, op OperationPayload) error
 	OnFailure(w Workflow, op OperationPayload) error
 }
 
-func (p *processor) StartWorkflow(w Workflow) error {
+func (p *processor) StartWorkflow(w Workflow, id int) error {
 	p.workflow = w
-	id, err := reserveID("workflow:index", p.cache)
-	if err != nil {
-		return err
-	}
-
 	p.state = state{
 		ID: id,
 	}
-	err = p.state.init(p.cache)
+	err := p.state.init(p.cache)
 	if err != nil {
 		return err
 	}
 
 	t := createDirectTracer(w, p.state, p.endWorkflow, p.spawnOperation)
-	t.resolveWorkflow(w.Start)
-
-	return nil
+	return t.resolveWorkflow(w.Start)
 }
 
 func (p *processor) OnComplete(w Workflow, op OperationPayload) error {
@@ -63,6 +60,8 @@ func (p *processor) OnComplete(w Workflow, op OperationPayload) error {
 			addOp(s.Done, op.Operation)
 		}
 	})
+
+	fmt.Printf("state: %v\n", p.state)
 	if err != nil {
 		return err
 	}
@@ -112,12 +111,7 @@ func (p *processor) spawnOperation(op Operation) error {
 		return err
 	}
 
-	topic := WORKFLOW_OPERATION_EXECUTE
-	if p.state.IsRollback {
-		topic = WORKFLOW_OPERATION_ROLLBACK
-	}
-
-	return p.producer.SendMessage(topic, payload)
+	return p.producer.SendMessage(WORKFLOW_OPERATION_START, payload)
 }
 
 func (p *processor) endWorkflow() error {

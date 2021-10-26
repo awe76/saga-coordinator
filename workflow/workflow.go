@@ -1,10 +1,10 @@
 package workflow
 
 type Workflow struct {
-	Name       string
-	Start      string
-	End        string
-	Operations []Operation
+	Name       string      `json:"name"`
+	Start      string      `json:"start"`
+	End        string      `json:"end"`
+	Operations []Operation `json:"operations"`
 }
 
 func (w *Workflow) toPayload(id int, isReversion bool) WorkflowPayload {

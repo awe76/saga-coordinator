@@ -21,7 +21,7 @@ func (gw *gateway) Run() {
 	app := fiber.New()
 	api := app.Group("/api/v1") // /api
 
-	createComment := gw.handler.createComment()
-	api.Post("/comments", createComment)
+	handleWorkflow := gw.handler.handleWorkflow()
+	api.Post("/workflows", handleWorkflow)
 	app.Listen(":3000")
 }

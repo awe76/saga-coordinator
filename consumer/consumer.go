@@ -9,9 +9,10 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/awe76/saga-coordinator/cache"
 	"github.com/awe76/saga-coordinator/client"
+	"github.com/awe76/saga-coordinator/producer"
 )
 
-type MessageHandler = func(msg *sarama.ConsumerMessage, cache cache.Cache)
+type MessageHandler = func(msg *sarama.ConsumerMessage, cache cache.Cache, producer producer.Producer) error
 type ErrorHandler = func(err error)
 type query struct {
 	topic         string
@@ -20,11 +21,12 @@ type query struct {
 }
 
 type consumer struct {
-	client  client.Client
-	cache   cache.Cache
-	topicCh chan query
-	doneCh  chan struct{}
-	conn    sarama.Consumer
+	client   client.Client
+	cache    cache.Cache
+	producer producer.Producer
+	topicCh  chan query
+	doneCh   chan struct{}
+	conn     sarama.Consumer
 }
 
 type Consumer interface {
@@ -33,24 +35,24 @@ type Consumer interface {
 	WaitForInterrupt()
 }
 
-func (cr *consumer) HandleTopic(topic string, handleMessage MessageHandler, handleError ErrorHandler) {
+func (c *consumer) HandleTopic(topic string, handleMessage MessageHandler, handleError ErrorHandler) {
 	query := query{
 		topic:         topic,
 		handleMessage: handleMessage,
 		handleError:   handleError,
 	}
 
-	cr.topicCh <- query
+	c.topicCh <- query
 }
 
-func (cr *consumer) Start() {
-	cr.topicCh = make(chan query)
+func (c *consumer) Start() {
+	c.topicCh = make(chan query)
 	// Get signal for finish
-	cr.doneCh = make(chan struct{})
+	c.doneCh = make(chan struct{})
 
 	var err error
 
-	cr.conn, err = cr.client.NewKafkaConsumer()
+	c.conn, err = c.client.NewKafkaConsumer()
 	if err != nil {
 		panic(err)
 	}
@@ -62,30 +64,28 @@ func (cr *consumer) Start() {
 	go func() {
 		for {
 			select {
-			case q := <-cr.topicCh:
+			case q := <-c.topicCh:
 				// Calling ConsumePartition. It will open one connection per broker
 				// and share it for all partitions that live on it.
-				consumer, err := cr.conn.ConsumePartition(q.topic, 0, sarama.OffsetOldest)
+				consumer, err := c.conn.ConsumePartition(q.topic, 0, sarama.OffsetOldest)
 				if err != nil {
+					fmt.Printf("%v\n", q.topic)
 					panic(err)
 				}
 
-				// Count how many message processed
-				msgCount := 0
 				go func() {
 					for {
 						select {
 						case err := <-consumer.Errors():
 							q.handleError(err)
 						case msg := <-consumer.Messages():
-							msgCount++
-							q.handleMessage(msg, cr.cache)
+							q.handleMessage(msg, c.cache, c.producer)
 						}
 					}
 				}()
 			case <-sigchan:
 				fmt.Println("Interrupt is detected")
-				cr.doneCh <- struct{}{}
+				c.doneCh <- struct{}{}
 			}
 		}
 	}()

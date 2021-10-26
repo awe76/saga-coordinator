@@ -12,7 +12,7 @@ type Index struct {
 	ID int
 }
 
-func reserveID(key string, cache cache.Cache) (int, error) {
+func ReserveID(key string, cache cache.Cache) (int, error) {
 	var index Index
 
 	ctx := context.Background()

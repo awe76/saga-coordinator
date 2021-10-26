@@ -3,9 +3,9 @@ package workflow
 import "fmt"
 
 type Operation struct {
-	Name string
-	From string
-	To   string
+	Name string `json:"name"`
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 func (op *Operation) getKey() string {

@@ -49,14 +49,15 @@ func TestProcessor(t *testing.T) {
 			steps: []step{
 				{
 					action: func(t *testing.T, w Workflow, p *processor) {
-						assert.NoError(t, p.StartWorkflow(w))
+						err := p.StartWorkflow(w, 1)
+						assert.NoError(t, err)
 					},
 					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
 						op1 := ops[0].toPayload(1, w, false)
-						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op1))
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op1))
 
 						op2 := ops[1].toPayload(1, w, false)
-						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op2))
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op2))
 					},
 				},
 				{
@@ -69,7 +70,7 @@ func TestProcessor(t *testing.T) {
 					},
 					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
 						op3 := ops[2].toPayload(1, w, false)
-						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op3))
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op3))
 					},
 				},
 				{
@@ -89,14 +90,15 @@ func TestProcessor(t *testing.T) {
 			steps: []step{
 				{
 					action: func(t *testing.T, w Workflow, p *processor) {
-						assert.NoError(t, p.StartWorkflow(w))
+						err := p.StartWorkflow(w, 1)
+						assert.NoError(t, err)
 					},
 					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
 						op1 := ops[0].toPayload(1, w, false)
-						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op1))
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op1))
 
 						op2 := ops[1].toPayload(1, w, false)
-						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op2))
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op2))
 					},
 				},
 				{
@@ -109,7 +111,7 @@ func TestProcessor(t *testing.T) {
 					},
 					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
 						op3 := ops[2].toPayload(1, w, false)
-						assert.True(t, p.Has(WORKFLOW_OPERATION_EXECUTE, op3))
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op3))
 					},
 				},
 				{
@@ -119,10 +121,10 @@ func TestProcessor(t *testing.T) {
 					},
 					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
 						op1 := ops[0].toPayload(1, w, true)
-						assert.True(t, p.Has(WORKFLOW_OPERATION_ROLLBACK, op1))
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op1))
 
 						op2 := ops[1].toPayload(1, w, true)
-						assert.True(t, p.Has(WORKFLOW_OPERATION_ROLLBACK, op2))
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op2))
 					},
 				},
 				{
