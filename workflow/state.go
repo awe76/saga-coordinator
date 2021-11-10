@@ -11,6 +11,7 @@ import (
 type state struct {
 	ID         int
 	IsRollback bool
+	Completed  bool
 	Done       map[string]Operation
 	InProgress map[string]Operation
 	Data       map[string]map[string]interface{}
@@ -24,6 +25,7 @@ func (s *state) init(cache cache.Cache) error {
 	ctx := context.Background()
 
 	s.IsRollback = false
+	s.Completed = false
 	s.Done = make(map[string]Operation)
 	s.InProgress = make(map[string]Operation)
 	s.Data = make(map[string]map[string]interface{})

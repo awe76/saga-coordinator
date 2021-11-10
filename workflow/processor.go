@@ -117,16 +117,27 @@ func (p *processor) spawnOperation(op Operation) error {
 }
 
 func (p *processor) endWorkflow() error {
-	payload := WorkflowPayload{
-		ID:         p.state.ID,
-		IsRollback: p.state.IsRollback,
-		Name:       p.workflow.Name,
+	if !p.state.Completed {
+		err := p.state.update(p.cache, func(s *state) {
+			s.Completed = true
+		})
+		if err != nil {
+			return err
+		}
+
+		payload := WorkflowPayload{
+			ID:         p.state.ID,
+			IsRollback: p.state.IsRollback,
+			Name:       p.workflow.Name,
+		}
+
+		topic := WORKFLOW_COMPLETED
+		if p.state.IsRollback {
+			topic = WORKFLOW_ROLLBACKED
+		}
+
+		return p.producer.SendMessage(topic, payload)
 	}
 
-	topic := WORKFLOW_COMPLETED
-	if p.state.IsRollback {
-		topic = WORKFLOW_ROLLBACKED
-	}
-
-	return p.producer.SendMessage(topic, payload)
+	return nil
 }
