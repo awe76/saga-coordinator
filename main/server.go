@@ -22,6 +22,7 @@ func main() {
 		consumer.HandleTopic(workflow.WORKFLOW_OPERATION_COMPLETED, handler.HandleOperationComplete, handler.HandleError)
 		consumer.HandleTopic(workflow.WORKFLOW_OPERATION_FAILED, handler.HandleOperationFailure, handler.HandleError)
 		consumer.HandleTopic(workflow.WORKFLOW_COMPLETED, handler.HandleWorkflowCompleted, handler.HandleError)
+		consumer.HandleTopic(workflow.WORKFLOW_ROLLBACKED, handler.HandleWorkflowRollbacked, handler.HandleError)
 		consumer.WaitForInterrupt()
 
 	} else {

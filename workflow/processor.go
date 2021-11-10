@@ -86,6 +86,8 @@ func (p *processor) OnFailure(w Workflow, op OperationPayload) error {
 
 		s.IsRollback = true
 	})
+
+	fmt.Printf("state: %v\n", p.state)
 	if err != nil {
 		return err
 	}

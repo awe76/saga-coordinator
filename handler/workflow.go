@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/awe76/saga-coordinator/cache"
@@ -70,8 +72,24 @@ func HandleOperationStart(msg *sarama.ConsumerMessage, c cache.Cache, p producer
 		return err
 	}
 
-	fmt.Printf("%s operation is started\n", op.Operation.Name)
-	return p.SendMessage(workflow.WORKFLOW_OPERATION_COMPLETED, op)
+	if op.IsRollback {
+		fmt.Printf("%s operation rollback is started\n", op.Operation.Name)
+	} else {
+		fmt.Printf("%s operation is started\n", op.Operation.Name)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+
+	pause := rand.Intn(500)
+	// sleep for some random time
+	time.Sleep(time.Duration(pause) * time.Millisecond)
+
+	// randomly complete or fault the operation
+	if op.IsRollback || rand.Float32() < 0.8 {
+		return p.SendMessage(workflow.WORKFLOW_OPERATION_COMPLETED, op)
+	} else {
+		return p.SendMessage(workflow.WORKFLOW_OPERATION_FAILED, op)
+	}
 }
 
 func HandleOperationComplete(msg *sarama.ConsumerMessage, c cache.Cache, p producer.Producer) error {
@@ -81,7 +99,12 @@ func HandleOperationComplete(msg *sarama.ConsumerMessage, c cache.Cache, p produ
 		return err
 	}
 
-	fmt.Printf("%s operation is completed\n", op.Operation.Name)
+	if op.IsRollback {
+		fmt.Printf("%s operation rollback is completed\n", op.Operation.Name)
+	} else {
+		fmt.Printf("%s operation is completed\n", op.Operation.Name)
+	}
+
 	proc := workflow.NewProcessor(c, p)
 	w, err := getWorkflow(op.ID, c)
 	if err != nil {
@@ -98,6 +121,7 @@ func HandleOperationFailure(msg *sarama.ConsumerMessage, c cache.Cache, p produc
 		return err
 	}
 
+	fmt.Printf("%s operation is failed\n", op.Operation.Name)
 	proc := workflow.NewProcessor(c, p)
 	w, err := getWorkflow(op.ID, c)
 	if err != nil {
@@ -114,5 +138,16 @@ func HandleWorkflowCompleted(msg *sarama.ConsumerMessage, c cache.Cache, p produ
 	}
 
 	fmt.Printf("%s %d workflow is completed\n", w.Name, w.ID)
+	return nil
+}
+
+func HandleWorkflowRollbacked(msg *sarama.ConsumerMessage, c cache.Cache, p producer.Producer) error {
+	var w workflow.WorkflowPayload
+	err := json.Unmarshal(msg.Value, &w)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s %d workflow is rollbacked\n", w.Name, w.ID)
 	return nil
 }
