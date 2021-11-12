@@ -14,6 +14,7 @@ type cache struct {
 type Cache interface {
 	Set(ctx context.Context, key string, value interface{}) error
 	Get(ctx context.Context, key string) (string, error)
+	Remove(ctx context.Context, key string) error
 }
 
 func (c *cache) Set(ctx context.Context, key string, value interface{}) error {
@@ -28,4 +29,9 @@ func (c *cache) Set(ctx context.Context, key string, value interface{}) error {
 func (c *cache) Get(ctx context.Context, key string) (string, error) {
 	rdb := c.client.GetRedisClient()
 	return rdb.Get(ctx, key).Result()
+}
+
+func (c *cache) Remove(ctx context.Context, key string) error {
+	rdb := c.client.GetRedisClient()
+	return rdb.Del(ctx, key).Err()
 }

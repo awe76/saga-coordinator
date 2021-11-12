@@ -35,7 +35,7 @@ go run ./main -- consumer
 ```shell
 curl --location --request POST '0.0.0.0:3000/api/v1/workflows' \
 --header 'Content-Type: application/json' \
---data-raw '{"name":"default workflow","start":"s1","end":"s2","operations":[{"name":"op1","from":"s1","to":"s2"},{"name":"op2","from":"s1","to":"s3"},{"name":"op3","from":"s3","to":"s2"}]}'
+--data-raw '{"name":"default workflow","start":"s1","end":"s2","payload":1, "operations":[{"name":"op1","from":"s1","to":"s2"},{"name":"op2","from":"s1","to":"s3"},{"name":"op3","from":"s3","to":"s2"}]}'
 ```
 
 ## Reset Kafka State

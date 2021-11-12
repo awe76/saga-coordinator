@@ -67,7 +67,7 @@ func (c *consumer) Start() {
 			case q := <-c.topicCh:
 				// Calling ConsumePartition. It will open one connection per broker
 				// and share it for all partitions that live on it.
-				consumer, err := c.conn.ConsumePartition(q.topic, 0, sarama.OffsetOldest)
+				consumer, err := c.conn.ConsumePartition(q.topic, 0, sarama.OffsetNewest)
 				if err != nil {
 					fmt.Printf("%v\n", q.topic)
 					panic(err)

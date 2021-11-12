@@ -4,5 +4,5 @@ type WorkflowPayload struct {
 	ID         int
 	IsRollback bool
 	Name       string
-	Data       map[string]interface{}
+	Data       map[string]map[string]interface{}
 }

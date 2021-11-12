@@ -84,6 +84,8 @@ func HandleOperationStart(msg *sarama.ConsumerMessage, c cache.Cache, p producer
 	// sleep for some random time
 	time.Sleep(time.Duration(pause) * time.Millisecond)
 
+	op.Payload = rand.Float32()
+
 	// randomly complete or fault the operation
 	if op.IsRollback || rand.Float32() < 0.8 {
 		return p.SendMessage(workflow.WORKFLOW_OPERATION_COMPLETED, op)
@@ -138,6 +140,7 @@ func HandleWorkflowCompleted(msg *sarama.ConsumerMessage, c cache.Cache, p produ
 	}
 
 	fmt.Printf("%s %d workflow is completed\n", w.Name, w.ID)
+	fmt.Printf("workflow state: %v\n", w.Data)
 	return nil
 }
 
@@ -149,5 +152,6 @@ func HandleWorkflowRollbacked(msg *sarama.ConsumerMessage, c cache.Cache, p prod
 	}
 
 	fmt.Printf("%s %d workflow is rollbacked\n", w.Name, w.ID)
+	fmt.Printf("workflow state: %v\n", w.Data)
 	return nil
 }

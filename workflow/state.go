@@ -21,7 +21,7 @@ func (s *state) getCacheKey() string {
 	return fmt.Sprintf("workflow:state:%v", s.ID)
 }
 
-func (s *state) init(cache cache.Cache) error {
+func (s *state) init(cache cache.Cache, start string, payload interface{}) error {
 	ctx := context.Background()
 
 	s.IsRollback = false
@@ -29,10 +29,21 @@ func (s *state) init(cache cache.Cache) error {
 	s.Done = make(map[string]Operation)
 	s.InProgress = make(map[string]Operation)
 	s.Data = make(map[string]map[string]interface{})
+	s.setData(start, "input", payload)
 
 	key := s.getCacheKey()
 	cache.Set(ctx, key, s)
 	return nil
+}
+
+func (s *state) setData(vertex string, operation string, payload interface{}) {
+	ops, found := s.Data[vertex]
+	if !found {
+		ops = make(map[string]interface{})
+		s.Data[vertex] = ops
+	}
+
+	ops[operation] = payload
 }
 
 func (s *state) update(cache cache.Cache, update func(*state)) error {

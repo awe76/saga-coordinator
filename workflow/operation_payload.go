@@ -5,4 +5,5 @@ type OperationPayload struct {
 	IsRollback bool
 	Name       string
 	Operation  Operation
+	Payload    interface{}
 }

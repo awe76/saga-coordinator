@@ -1,6 +1,9 @@
 package producermock
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type ProducerMock struct {
 	messages map[string][]string
@@ -35,8 +38,10 @@ func (p *ProducerMock) Has(topic string, message interface{}) bool {
 	}
 
 	pattern := string(raw)
+	fmt.Printf("%v\n", pattern)
 	if messages, found := p.messages[topic]; found {
 		for _, message := range messages {
+			fmt.Printf("%v\n", message)
 			if message == pattern {
 				return true
 			}
