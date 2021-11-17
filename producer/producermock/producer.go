@@ -38,10 +38,8 @@ func (p *ProducerMock) Has(topic string, message interface{}) bool {
 	}
 
 	pattern := string(raw)
-	fmt.Printf("%v\n", pattern)
 	if messages, found := p.messages[topic]; found {
 		for _, message := range messages {
-			fmt.Printf("%v\n", message)
 			if message == pattern {
 				return true
 			}
@@ -49,4 +47,13 @@ func (p *ProducerMock) Has(topic string, message interface{}) bool {
 	}
 
 	return false
+}
+
+func (p *ProducerMock) Print() {
+	for topic, messages := range p.messages {
+		fmt.Printf("%s\n", topic)
+		for _, message := range messages {
+			fmt.Printf("%v\n", message)
+		}
+	}
 }

@@ -169,6 +169,77 @@ func TestProcessor(t *testing.T) {
 				},
 			},
 		},
+		"default workflow op2 is failed": {
+			w: defaultWorkflow,
+			steps: []step{
+				{
+					action: func(t *testing.T, w Workflow, p *processor) {
+						err := p.StartWorkflow(w, 1)
+						assert.NoError(t, err)
+					},
+					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
+						payload := make(map[string]interface{})
+						payload["input"] = nil
+						op1 := ops[0].toPayload(1, w, false, payload)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op1))
+
+						op2 := ops[1].toPayload(1, w, false, payload)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op2))
+					},
+				},
+				{
+					action: func(t *testing.T, w Workflow, p *processor) {
+						op1 := ops[0].toPayload(1, w, false, nil)
+						assert.NoError(t, p.OnComplete(w, op1))
+
+						op2 := ops[1].toPayload(1, w, false, nil)
+						assert.NoError(t, p.OnFailure(w, op2))
+					},
+					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
+						payload := make(map[string]interface{})
+						payload["input"] = nil
+						op1 := ops[0].toPayload(1, w, true, payload)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op1))
+					},
+				},
+			},
+		},
+		"default workflow op1 is failed": {
+			w: defaultWorkflow,
+			steps: []step{
+				{
+					action: func(t *testing.T, w Workflow, p *processor) {
+						err := p.StartWorkflow(w, 1)
+						assert.NoError(t, err)
+					},
+					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
+						payload := make(map[string]interface{})
+						payload["input"] = nil
+
+						op1 := ops[0].toPayload(1, w, false, payload)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op1))
+
+						op2 := ops[1].toPayload(1, w, false, payload)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op2))
+					},
+				},
+				{
+					action: func(t *testing.T, w Workflow, p *processor) {
+						op1 := ops[0].toPayload(1, w, false, nil)
+						assert.NoError(t, p.OnFailure(w, op1))
+
+						op2 := ops[1].toPayload(1, w, false, nil)
+						assert.NoError(t, p.OnComplete(w, op2))
+					},
+					validate: func(t *testing.T, w Workflow, p *producermock.ProducerMock) {
+						payload := make(map[string]interface{})
+						payload["input"] = nil
+						op2 := ops[1].toPayload(1, w, true, payload)
+						assert.True(t, p.Has(WORKFLOW_OPERATION_START, op2))
+					},
+				},
+			},
+		},
 	}
 
 	for name, tc := range tests {

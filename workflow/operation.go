@@ -8,8 +8,8 @@ type Operation struct {
 	To   string `json:"to"`
 }
 
-func (op *Operation) getKey() string {
-	return fmt.Sprintf("%s:%s:%s", op.Name, op.From, op.To)
+func (op *Operation) getKey(isRollback bool) string {
+	return fmt.Sprintf("%s:%s:%s:%v", op.Name, op.From, op.To, isRollback)
 }
 
 func (op *Operation) toPayload(id int, w Workflow, isRollback bool, payload interface{}) OperationPayload {

@@ -52,12 +52,9 @@ func (p *processor) OnComplete(w Workflow, op OperationPayload) error {
 		ID: op.ID,
 	}
 	err := p.state.update(p.cache, func(s *state) {
-		removeOp(s.InProgress, op.Operation)
-
-		if !s.IsRollback {
-			addOp(s.Done, op.Operation)
-			s.setData(op.Operation.To, op.Operation.Name, op.Payload)
-		}
+		removeOp(s.InProgress, op.Operation, op.IsRollback)
+		addOp(s.Done, op.Operation, op.IsRollback)
+		s.setData(op.Operation.To, op.Operation.Name, op.Payload)
 	})
 
 	if err != nil {
@@ -80,7 +77,7 @@ func (p *processor) OnFailure(w Workflow, op OperationPayload) error {
 		ID: op.ID,
 	}
 	err := p.state.update(p.cache, func(s *state) {
-		removeOp(s.InProgress, op.Operation)
+		removeOp(s.InProgress, op.Operation, false)
 
 		s.IsRollback = true
 	})
@@ -106,10 +103,9 @@ func (p *processor) spawnOperation(op Operation) error {
 	}
 
 	err := p.state.update(p.cache, func(s *state) {
-		if s.IsRollback {
-			removeOp(s.Done, op)
-		}
+		addOp(s.InProgress, op, p.state.IsRollback)
 	})
+
 	if err != nil {
 		return err
 	}

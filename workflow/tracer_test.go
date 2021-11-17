@@ -191,7 +191,7 @@ func TestDirectTracer(t *testing.T) {
 			for _, name := range tc.done {
 				for _, op := range tc.operations {
 					if op.Name == name {
-						addOp(done, op)
+						addOp(done, op, false)
 					}
 				}
 			}
@@ -199,7 +199,7 @@ func TestDirectTracer(t *testing.T) {
 			for _, name := range tc.inProgress {
 				for _, op := range tc.operations {
 					if op.Name == name {
-						addOp(inProgress, op)
+						addOp(inProgress, op, false)
 					}
 				}
 			}
@@ -217,6 +217,7 @@ func TestDirectTracer(t *testing.T) {
 
 			spawned := []string{}
 			spawn := func(op Operation) error {
+				addOp(inProgress, op, false)
 				spawned = append(spawned, op.Name)
 				return nil
 			}
@@ -383,7 +384,7 @@ func TestReverseTracer(t *testing.T) {
 			for _, name := range tc.done {
 				for _, op := range tc.operations {
 					if op.Name == name {
-						addOp(done, op)
+						addOp(done, op, false)
 					}
 				}
 			}
@@ -391,7 +392,7 @@ func TestReverseTracer(t *testing.T) {
 			for _, name := range tc.inProgress {
 				for _, op := range tc.operations {
 					if op.Name == name {
-						addOp(inProgress, op)
+						addOp(inProgress, op, false)
 					}
 				}
 			}
@@ -409,6 +410,7 @@ func TestReverseTracer(t *testing.T) {
 
 			spawned := []string{}
 			spawn := func(op Operation) error {
+				addOp(inProgress, op, true)
 				spawned = append(spawned, op.Name)
 				return nil
 			}
