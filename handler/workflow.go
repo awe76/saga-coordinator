@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/awe76/saga-coordinator/cache"
@@ -74,23 +72,11 @@ func HandleOperationStart(msg *sarama.ConsumerMessage, c cache.Cache, p producer
 
 	if op.IsRollback {
 		fmt.Printf("%s operation rollback is started\n", op.Operation.Name)
+		topic := fmt.Sprintf("%v-rollback", op.Operation.Name)
+		return p.SendMessage(topic, op)
 	} else {
 		fmt.Printf("%s operation is started\n", op.Operation.Name)
-	}
-
-	rand.Seed(time.Now().UnixNano())
-
-	pause := rand.Intn(500)
-	// sleep for some random time
-	time.Sleep(time.Duration(pause) * time.Millisecond)
-
-	op.Payload = rand.Float32()
-
-	// randomly complete or fault the operation
-	if op.IsRollback || rand.Float32() < 0.8 {
-		return p.SendMessage(workflow.WORKFLOW_OPERATION_COMPLETED, op)
-	} else {
-		return p.SendMessage(workflow.WORKFLOW_OPERATION_FAILED, op)
+		return p.SendMessage(op.Operation.Name, op)
 	}
 }
 
@@ -154,4 +140,8 @@ func HandleWorkflowRollbacked(msg *sarama.ConsumerMessage, c cache.Cache, p prod
 	fmt.Printf("%s %d workflow is rollbacked\n", w.Name, w.ID)
 	fmt.Printf("workflow state: %v\n", w.Data)
 	return nil
+}
+
+func HandleError(err error) {
+	fmt.Println(err)
 }

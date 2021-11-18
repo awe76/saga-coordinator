@@ -22,6 +22,8 @@ func (gw *gateway) Run() {
 	api := app.Group("/api/v1") // /api
 
 	handleWorkflow := gw.handler.handleWorkflow()
+	handleCreatePortfolio := gw.handler.handleCreatePortfolio()
 	api.Post("/workflows", handleWorkflow)
+	api.Post("/create-portfolio", handleCreatePortfolio)
 	app.Listen(":3000")
 }
